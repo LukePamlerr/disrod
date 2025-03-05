@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disrod - Advanced Embed Builder</title>
+    <style>
+        body {
+            background: #1A1A1A;
+            color: #FFFFFF;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        .editor, .preview {
+            width: 50%;
+            padding: 20px;
+            background: #2F3136;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .editor input, .editor textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #36393F;
+            border: none;
+            border-radius: 4px;
+            color: #FFFFFF;
+        }
+        .preview {
+            background: #36393F;
+            overflow: hidden;
+        }
+        .embed-preview {
+            background: #2F3136;
+            padding: 15px;
+            border-left: 4px solid #5865F2;
+            border-radius: 4px;
+            max-width: 400px;
+        }
+        .embed-title { font-size: 18px; font-weight: bold; }
+        .embed-description { font-size: 14px; margin: 10px 0; }
+        .embed-field { margin: 10px 0; }
+        .field-name { font-weight: bold; }
+        .field-value { font-size: 14px; }
+        .embed-footer { font-size: 12px; color: #B9BBBE; margin-top: 10px; }
+        button {
+            background: #5865F2;
+            color: #FFFFFF;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover { background: #4752C4; }
+    </style>
+</head>
+<body>
+    <div class="editor">
+        <h2>Disrod Embed Builder</h2>
+        <input type="text" id="title" placeholder="Embed Title" oninput="updatePreview()">
+        <textarea id="description" placeholder="Embed Description" oninput="updatePreview()"></textarea>
+        <input type="text" id="fieldName" placeholder="Field Name" oninput="updatePreview()">
+        <input type="text" id="fieldValue" placeholder="Field Value" oninput="updatePreview()">
+        <input type="text" id="footer" placeholder="Footer Text" oninput="updatePreview()">
+        <input type="color" id="color" value="#5865F2" oninput="updatePreview()">
+        <button onclick="sendEmbed()">Send via Bot</button>
+    </div>
+    <div class="preview">
+        <h2>Preview</h2>
+        <div class="embed-preview" id="embedPreview">
+            <div class="embed-title" id="previewTitle"></div>
+            <div class="embed-description" id="previewDescription"></div>
+            <div class="embed-field">
+                <div class="field-name" id="previewFieldName"></div>
+                <div class="field-value" id="previewFieldValue"></div>
+            </div>
+            <div class="embed-footer" id="previewFooter"></div>
+        </div>
+    </div>
+
+    <script>
+        function updatePreview() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const fieldName = document.getElementById('fieldName').value;
+            const fieldValue = document.getElementById('fieldValue').value;
+            const footer = document.getElementById('footer').value;
+            const color = document.getElementById('color').value;
+
+            document.getElementById('previewTitle').innerText = title || 'Embed Title';
+            document.getElementById('previewDescription').innerText = description || '';
+            document.getElementById('previewFieldName').innerText = fieldName || '';
+            document.getElementById('previewFieldValue').innerText = fieldValue || '';
+            document.getElementById('previewFooter').innerText = footer || '';
+            document.getElementById('embedPreview').style.borderLeftColor = color;
+        }
+
+        function sendEmbed() {
+            const embedData = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                fields: [{ name: document.getElementById('fieldName').value, value: document.getElementById('fieldValue').value }],
+                footer: { text: document.getElementById('footer').value },
+                color: parseInt(document.getElementById('color').value.replace('#', ''), 16)
+            };
+            alert('Embed ready! JSON: ' + JSON.stringify(embedData));
+            // Here, you'd send `embedData` to your bot via an API call (see bot code below).
+        }
+    </script>
+</body>
+</html>
