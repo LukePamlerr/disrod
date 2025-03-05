@@ -8,7 +8,6 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// API endpoint to receive embed data from Disrod
 app.post('/send-embed', (req, res) => {
     const embedData = req.body;
     const channel = client.channels.cache.get('YOUR_CHANNEL_ID'); // Replace with target channel ID
@@ -19,10 +18,17 @@ app.post('/send-embed', (req, res) => {
         .setTitle(embedData.title)
         .setDescription(embedData.description)
         .setColor(embedData.color)
-        .setFooter({ text: embedData.footer.text });
+        .setFooter({ text: embedData.footer.text })
+        .setTimestamp(embedData.timestamp || null);
 
     if (embedData.fields && embedData.fields.length > 0) {
         embed.addFields(embedData.fields);
+    }
+    if (embedData.image && embedData.image.url) {
+        embed.setImage(embedData.image.url); // Base64 or URL
+    }
+    if (embedData.author && embedData.author.name) {
+        embed.setAuthor({ name: embedData.author.name, iconURL: embedData.author.icon_url });
     }
 
     channel.send({ embeds: [embed] })
