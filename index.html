@@ -17,11 +17,12 @@
         .editor, .preview {
             width: 50%;
             padding: 20px;
-            background: #2F3136;
+            background: rgba(47, 49, 54, 0.8);
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         }
-        .editor input, .editor textarea {
+        .editor input, .editor textarea, .editor select {
             width: 100%;
             padding: 10px;
             margin: 5px 0;
@@ -29,10 +30,19 @@
             border: none;
             border-radius: 4px;
             color: #FFFFFF;
+            box-sizing: border-box;
         }
+        .field-container {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: center;
+        }
+        .field-container input { width: 45%; }
         .preview {
             background: #36393F;
-            overflow: hidden;
+            overflow-y: auto;
+            max-height: 80vh;
         }
         .embed-preview {
             background: #2F3136;
@@ -41,12 +51,15 @@
             border-radius: 4px;
             max-width: 400px;
         }
+        .embed-author { font-size: 14px; font-weight: bold; margin-bottom: 10px; }
         .embed-title { font-size: 18px; font-weight: bold; }
         .embed-description { font-size: 14px; margin: 10px 0; }
         .embed-field { margin: 10px 0; }
         .field-name { font-weight: bold; }
         .field-value { font-size: 14px; }
         .embed-footer { font-size: 12px; color: #B9BBBE; margin-top: 10px; }
+        .embed-image { max-width: 100%; border-radius: 4px; margin: 10px 0; }
+        .embed-timestamp { font-size: 12px; color: #B9BBBE; }
         button {
             background: #5865F2;
             color: #FFFFFF;
@@ -54,62 +67,205 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: background 0.3s;
         }
         button:hover { background: #4752C4; }
+        .small-btn { padding: 5px 10px; font-size: 12px; }
+        .gradient-preview { width: 100%; height: 20px; margin: 5px 0; }
     </style>
 </head>
 <body>
     <div class="editor">
         <h2>Disrod Embed Builder</h2>
+        <select id="template" onchange="loadTemplate()">
+            <option value="">Select Template</option>
+            <option value="welcome">Welcome Message</option>
+            <option value="event">Event Announcement</option>
+        </select>
+        <input type="text" id="author" placeholder="Author Name" oninput="updatePreview()">
+        <input type="text" id="authorIcon" placeholder="Author Icon URL" oninput="updatePreview()">
         <input type="text" id="title" placeholder="Embed Title" oninput="updatePreview()">
         <textarea id="description" placeholder="Embed Description" oninput="updatePreview()"></textarea>
-        <input type="text" id="fieldName" placeholder="Field Name" oninput="updatePreview()">
-        <input type="text" id="fieldValue" placeholder="Field Value" oninput="updatePreview()">
+        <div id="fields">
+            <div class="field-container">
+                <input type="text" class="field-name" placeholder="Field Name" oninput="updatePreview()">
+                <input type="text" class="field-value" placeholder="Field Value" oninput="updatePreview()">
+                <button class="small-btn" onclick="removeField(this)">Remove</button>
+            </div>
+        </div>
+        <button class="small-btn" onclick="addField()">Add Field</button>
         <input type="text" id="footer" placeholder="Footer Text" oninput="updatePreview()">
-        <input type="color" id="color" value="#5865F2" oninput="updatePreview()">
-        <button onclick="sendEmbed()">Send via Bot</button>
+        <input type="datetime-local" id="timestamp" oninput="updatePreview()">
+        <label>Gradient (approximated as color):</label>
+        <input type="color" id="gradientStart" value="#5865F2" oninput="updateGradient()">
+        <input type="color" id="gradientEnd" value="#FF4D4D" oninput="updateGradient()">
+        <div class="gradient-preview" id="gradientPreview"></div>
+        <input type="file" id="image" accept="image/*" onchange="previewImage()">
+        <input type="text" id="webhookUrl" placeholder="Webhook URL (optional)" style="margin-top: 10px;">
+        <button onclick="sendEmbed('bot')">Send via Bot</button>
+        <button onclick="sendEmbed('webhook')">Send via Webhook</button>
     </div>
     <div class="preview">
         <h2>Preview</h2>
         <div class="embed-preview" id="embedPreview">
+            <div class="embed-author" id="previewAuthor"></div>
             <div class="embed-title" id="previewTitle"></div>
             <div class="embed-description" id="previewDescription"></div>
-            <div class="embed-field">
-                <div class="field-name" id="previewFieldName"></div>
-                <div class="field-value" id="previewFieldValue"></div>
-            </div>
+            <div id="previewFields"></div>
+            <img class="embed-image" id="previewImage" style="display: none;">
             <div class="embed-footer" id="previewFooter"></div>
+            <div class="embed-timestamp" id="previewTimestamp"></div>
         </div>
     </div>
 
     <script>
         function updatePreview() {
+            const author = document.getElementById('author').value;
+            const authorIcon = document.getElementById('authorIcon').value;
             const title = document.getElementById('title').value;
             const description = document.getElementById('description').value;
-            const fieldName = document.getElementById('fieldName').value;
-            const fieldValue = document.getElementById('fieldValue').value;
             const footer = document.getElementById('footer').value;
-            const color = document.getElementById('color').value;
+            const timestamp = document.getElementById('timestamp').value;
+            const color = document.getElementById('gradientStart').value;
 
+            document.getElementById('previewAuthor').innerText = author || '';
+            if (authorIcon) document.getElementById('previewAuthor').style.background = `url(${authorIcon}) no-repeat left center / 20px`;
             document.getElementById('previewTitle').innerText = title || 'Embed Title';
             document.getElementById('previewDescription').innerText = description || '';
-            document.getElementById('previewFieldName').innerText = fieldName || '';
-            document.getElementById('previewFieldValue').innerText = fieldValue || '';
             document.getElementById('previewFooter').innerText = footer || '';
+            document.getElementById('previewTimestamp').innerText = timestamp ? new Date(timestamp).toLocaleString() : '';
             document.getElementById('embedPreview').style.borderLeftColor = color;
+
+            const fieldsContainer = document.getElementById('previewFields');
+            fieldsContainer.innerHTML = '';
+            document.querySelectorAll('.field-container').forEach(container => {
+                const name = container.querySelector('.field-name').value;
+                const value = container.querySelector('.field-value').value;
+                if (name || value) {
+                    const fieldDiv = document.createElement('div');
+                    fieldDiv.className = 'embed-field';
+                    fieldDiv.innerHTML = `<div class="field-name">${name || 'Field Name'}</div><div class="field-value">${value || 'Field Value'}</div>`;
+                    fieldsContainer.appendChild(fieldDiv);
+                }
+            });
         }
 
-        function sendEmbed() {
+        function updateGradient() {
+            const start = document.getElementById('gradientStart').value;
+            const end = document.getElementById('gradientEnd').value;
+            document.getElementById('gradientPreview').style.background = `linear-gradient(to right, ${start}, ${end})`;
+            updatePreview();
+        }
+
+        function addField() {
+            const fields = document.getElementById('fields');
+            const newField = document.createElement('div');
+            newField.className = 'field-container';
+            newField.innerHTML = `
+                <input type="text" class="field-name" placeholder="Field Name" oninput="updatePreview()">
+                <input type="text" class="field-value" placeholder="Field Value" oninput="updatePreview()">
+                <button class="small-btn" onclick="removeField(this)">Remove</button>
+            `;
+            fields.appendChild(newField);
+            updatePreview();
+        }
+
+        function removeField(button) {
+            button.parentElement.remove();
+            updatePreview();
+        }
+
+        function previewImage() {
+            const file = document.getElementById('image').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('previewImage');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function loadTemplate() {
+            const template = document.getElementById('template').value;
+            if (template === 'welcome') {
+                document.getElementById('author').value = 'Server Team';
+                document.getElementById('title').value = 'Welcome to the Server!';
+                document.getElementById('description').value = 'We’re glad you’re here! Check out our rules and say hi!';
+                document.getElementById('footer').value = 'Enjoy your stay!';
+            } else if (template === 'event') {
+                document.getElementById('author').value = 'Event Host';
+                document.getElementById('title').value = 'Upcoming Event: Movie Night';
+                document.getElementById('description').value = 'Join us this Friday at 8 PM EST!';
+                document.getElementById('footer').value = 'Bring popcorn!';
+            }
+            document.getElementById('fields').innerHTML = `
+                <div class="field-container">
+                    <input type="text" class="field-name" placeholder="Field Name" oninput="updatePreview()">
+                    <input type="text" class="field-value" placeholder="Field Value" oninput="updatePreview()">
+                    <button class="small-btn" onclick="removeField(this)">Remove</button>
+                </div>
+            `;
+            updatePreview();
+        }
+
+        async function sendEmbed(method) {
+            const fields = Array.from(document.querySelectorAll('.field-container')).map(container => ({
+                name: container.querySelector('.field-name').value,
+                value: container.querySelector('.field-value').value
+            })).filter(field => field.name || field.value);
+
             const embedData = {
                 title: document.getElementById('title').value,
                 description: document.getElementById('description').value,
-                fields: [{ name: document.getElementById('fieldName').value, value: document.getElementById('fieldValue').value }],
+                fields: fields,
                 footer: { text: document.getElementById('footer').value },
-                color: parseInt(document.getElementById('color').value.replace('#', ''), 16)
+                color: parseInt(document.getElementById('gradientStart').value.replace('#', ''), 16),
+                image: { url: document.getElementById('image').files[0] ? await toBase64(document.getElementById('image').files[0]) : null },
+                timestamp: document.getElementById('timestamp').value || null,
+                author: {
+                    name: document.getElementById('author').value || null,
+                    icon_url: document.getElementById('authorIcon').value || null
+                }
             };
-            alert('Embed ready! JSON: ' + JSON.stringify(embedData));
-            // Here, you'd send `embedData` to your bot via an API call (see bot code below).
+
+            try {
+                if (method === 'webhook') {
+                    const webhookUrl = document.getElementById('webhookUrl').value;
+                    if (!webhookUrl) throw new Error('Please provide a webhook URL');
+                    const response = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ embeds: [embedData] })
+                    });
+                    if (!response.ok) throw new Error('Webhook failed: ' + response.statusText);
+                    alert('Embed sent via webhook!');
+                } else {
+                    const response = await fetch('http://localhost:3000/send-embed', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(embedData)
+                    });
+                    const result = await response.text();
+                    alert(result);
+                }
+            } catch (error) {
+                alert('Error sending embed: ' + error.message);
+            }
         }
+
+        function toBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        updateGradient(); // Initial gradient preview
     </script>
 </body>
 </html>
